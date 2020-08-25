@@ -6,7 +6,7 @@
 *      Instituto Federal de Santa Catarina *
 *
 *
-*     Definitions from: https://github.com/yanbe/ssd1306-esp-idf-i2c
+*     OLED control definitions from: https://github.com/yanbe/ssd1306-esp-idf-i2c
 *
 */
 
