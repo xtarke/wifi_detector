@@ -156,7 +156,7 @@ static esp_err_t i2c_example_master_init()
     conf.sda_pullup_en = 1;
     conf.scl_io_num = I2C_MASTER_SCL_IO;
     conf.scl_pullup_en = 1;
-    conf.clk_stretch_tick = 30; // 300 ticks, Clock stretch is about 210us, you can make changes according to the actual situation.
+    conf.clk_stretch_tick = 30;
 
 		ESP_ERROR_CHECK(i2c_driver_install(i2c_master_port, conf.mode));
     ESP_ERROR_CHECK(i2c_param_config(i2c_master_port, &conf));
@@ -166,21 +166,32 @@ static esp_err_t i2c_example_master_init()
 void task_ssd1306_display(void *pvParameter){
 
   int size = 10;
+  int local_wifi_signal = 0;
   pixel_color_t color = WHITE_PIXEL;
 
   while(1) {
-    for (int i=0;i < 10; i++)
-      ssd1306_draw_h_line(10, 30+i, size, color);
 
-      ssd1306_display_data();
+    ssd1306_clear_vertical_region(4,size);
+    //ssd1306_clear_vertical_region(5,size);
 
-      size+=10;
-      
-      if (size > 100){
-        size = 10;
-          color ^= 1;
-      }
-    vTaskDelay(500 / portTICK_PERIOD_MS);
+    if (xSemaphoreTake(data_mutex, portMAX_DELAY) == pdTRUE)
+    {
+      local_wifi_signal = wifi_signal;
+      xSemaphoreGive(data_mutex);
+    }
+
+    size =2*local_wifi_signal + 180;
+    if (size < 0)
+      size = 0;
+    if (size > 128)
+      size = 128;
+
+    ssd1306_fill_vertical_region(4,size);
+    //ssd1306_fill_vertical_region(5,size);
+
+    //  ESP_LOGI(TAG, "size: %d", size);
+
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
 }
 
@@ -201,7 +212,7 @@ void task_wifi_signal(void *pvParameter){
       xSemaphoreGive(data_mutex);
     }
 
-    ESP_LOGI(TAG, "Wifi rssi: %d", my_wifi.rssi);
+    //ESP_LOGI(TAG, "Wifi rssi: %d", my_wifi.rssi);
     vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
 }
@@ -232,11 +243,23 @@ void app_main(void)
   ssd1306_init_new();
   ssd1306_display_clear();
 
-
   vSemaphoreCreateBinary(data_mutex);
 
-  xTaskCreate(&task_ssd1306_display, "task_ssd1306_display", 2048, NULL, 5, NULL);
+  ssd306_write_string(9, 4, "Wifi Analyzer");
 
+  // ssd1306_draw_h_line(0, 30, 120, WHITE_PIXEL);
+  // ssd1306_draw_h_line(0, 31, 120, WHITE_PIXEL);
+  // ssd1306_draw_h_line(0, 32, 120, WHITE_PIXEL);
+  // ssd1306_draw_h_line(0, 33, 120, WHITE_PIXEL);
+
+  ssd1306_display_data();
+
+  //ssd1306_clear_vertical_region(4,128);
+  //ssd1306_clear_vertical_region(5,128);
+
+  //ssd1306_fill_vertical_region(4,64);
+
+  xTaskCreate(&task_ssd1306_display, "task_ssd1306_display", 2048, NULL, 5, NULL);
   xTaskCreate(&task_wifi_signal, "task_wifi_signal", 2048, NULL, 5, NULL);
 
 }
