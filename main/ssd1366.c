@@ -5,6 +5,7 @@
 *      Author: Renan Augusto Starke
 *      Instituto Federal de Santa Catarina *
 *
+      - Oled ssd1306 low level functions
 *
 *     OLED control definitions from: https://github.com/yanbe/ssd1306-esp-idf-i2c
 *
@@ -90,7 +91,7 @@ void ssd1306_draw_pixel(int16_t x, int16_t y, pixel_color_t color){
  }
 }
 
-void ssd1306_init_new(){
+void ssd1306_init(){
   static const uint8_t init1[] = {OLED_CMD_DISPLAY_OFF,         // 0xAE
                                OLED_CMD_SET_DISPLAY_CLK_DIV, // 0xD5
                                0x80, // the suggested ratio 0x80
@@ -202,7 +203,7 @@ void ssd1306_display_clear() {
 	}
 }
 
-void ssd1306_clear_vertical_region(uint8_t x, uint8_t hor_size) {
+void ssd1306_clear_horizontal_region(uint8_t x, uint8_t hor_size) {
   i2c_cmd_handle_t cmd;
   uint8_t zero[128] = {0};
 
@@ -227,7 +228,7 @@ void ssd1306_clear_vertical_region(uint8_t x, uint8_t hor_size) {
   i2c_cmd_link_delete(cmd);
 }
 
-void ssd1306_fill_vertical_region(uint8_t x, uint8_t hor_size) {
+void ssd1306_fill_horizontal_region(uint8_t x, uint8_t hor_size) {
   i2c_cmd_handle_t cmd;
   uint8_t fill[128];
 
@@ -249,6 +250,31 @@ void ssd1306_fill_vertical_region(uint8_t x, uint8_t hor_size) {
   i2c_master_write_byte(cmd, (OLED_I2C_ADDRESS << 1) | I2C_MASTER_WRITE, true);
   i2c_master_write_byte(cmd, OLED_CONTROL_BYTE_DATA_STREAM, true);
   i2c_master_write(cmd, fill, hor_size, true);
+  i2c_master_stop(cmd);
+  i2c_master_cmd_begin(I2C_NUM_0, cmd, 100/portTICK_PERIOD_MS);
+  i2c_cmd_link_delete(cmd);
+}
+
+
+void ssd1306_fill_region(uint8_t x, uint8_t hor_size, uint8_t *data) {
+  i2c_cmd_handle_t cmd;
+
+  if (x > 8 || hor_size > 128)
+    return;
+
+  uint8_t cur_page = x;
+  uint8_t init[] = {OLED_CONTROL_BYTE_CMD_STREAM,
+                           0x00,
+                           0x10,
+                           0xB0 | cur_page};
+
+  ssd1306_command_list((uint8_t *)init, sizeof(init));
+
+  cmd = i2c_cmd_link_create();
+  i2c_master_start(cmd);
+  i2c_master_write_byte(cmd, (OLED_I2C_ADDRESS << 1) | I2C_MASTER_WRITE, true);
+  i2c_master_write_byte(cmd, OLED_CONTROL_BYTE_DATA_STREAM, true);
+  i2c_master_write(cmd, data, hor_size, true);
   i2c_master_stop(cmd);
   i2c_master_cmd_begin(I2C_NUM_0, cmd, 100/portTICK_PERIOD_MS);
   i2c_cmd_link_delete(cmd);

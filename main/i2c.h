@@ -7,5 +7,4 @@
 #define I2C_MASTER_TX_BUF_DISABLE   0                /*!< I2C master do not need buffer */
 #define I2C_MASTER_RX_BUF_DISABLE   0                /*!< I2C master do not need buffer */
 
-
 #endif /* I2C_H_ */

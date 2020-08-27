@@ -19,13 +19,15 @@ typedef enum  {
   WHITE_PIXEL, BLACK_PIXEL
 } pixel_color_t;
 
-void ssd1306_init_new();
+void ssd1306_init();
 
 void ssd1306_display_data();
 void ssd1306_display_clear();
 
-void ssd1306_clear_vertical_region(uint8_t x, uint8_t hor_size);
-void ssd1306_fill_vertical_region(uint8_t x, uint8_t hor_size);
+void ssd1306_clear_horizontal_region(uint8_t x, uint8_t hor_size);
+void ssd1306_fill_horizontal_region(uint8_t x, uint8_t hor_size);
+
+void ssd1306_fill_region(uint8_t x, uint8_t hor_size, uint8_t *data);
 
 void ssd1306_clearDisplay_buffer(void);
 
@@ -34,6 +36,5 @@ void ssd1306_draw_pixel(int16_t x, int16_t y, pixel_color_t color);
 
 void ssd306_write_string(int16_t x, int16_t y, char *data);
 void ssd1306_write_char(int16_t x, int16_t y, char data);
-
 
 #endif /* SSD1366_H_ */
