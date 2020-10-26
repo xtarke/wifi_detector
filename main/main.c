@@ -38,8 +38,17 @@
 
 #include "driver/i2c.h"
 
+#include "driver/gpio.h"
+#include "driver/pwm.h"
+
 #include "i2c.h"
 #include "ssd1366.h"
+
+// /#include "mcpwm.h"
+//#include "soc/mcpwm_reg.h"
+//#include "soc/mcpwm_struct.h"
+
+#define GPIO_PWM_OUT 0   //Set GPIO 15 as PWM0A
 
 #define EXAMPLE_ESP_WIFI_MODE_AP   CONFIG_ESP_WIFI_MODE_AP //TRUE:AP FALSE:STA
 #define EXAMPLE_ESP_WIFI_SSID      CONFIG_ESP_WIFI_SSID
@@ -85,6 +94,8 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     }
     return ESP_OK;
 }
+
+
 
 void wifi_init_softap()
 {
@@ -189,6 +200,55 @@ void task_ssd1306_display(void *pvParameter){
   }
 }
 
+void pwm_gpio_initialize()
+{
+
+  uint32_t duties = 400;
+  uint32_t pin  = GPIO_PWM_OUT;
+
+  ESP_LOGI(TAG, "pwm_gpio_initialize...");
+  ESP_ERROR_CHECK(pwm_init(500, &duties, 1, &pin));
+  pwm_set_phase(0,0);
+  ESP_ERROR_CHECK(pwm_start());
+}
+
+void task_buzzer(void *pvParameter){
+
+  int delay = 10;
+  int local_wifi_signal = 0;
+  wifi_ap_record_t my_wifi;
+
+  gpio_set_direction(GPIO_PWM_OUT, GPIO_MODE_OUTPUT);
+
+  while(1) {
+    esp_wifi_sta_get_ap_info(&my_wifi);
+
+    local_wifi_signal = my_wifi.rssi;
+
+    //ESP_LOGI(TAG, "rssi: %d ", local_wifi_signal);
+
+    if (local_wifi_signal >= 0) {
+      local_wifi_signal = -90;
+      //pwm_stop(1);
+      gpio_set_level(GPIO_PWM_OUT, 0);
+    }
+
+    delay = -45*local_wifi_signal - 520;
+    if (delay <= 0)
+      delay = 2000;
+
+    //ESP_LOGI(TAG, "local_wifi_signal: %d %d", local_wifi_signal, size);
+    vTaskDelay(200 / portTICK_PERIOD_MS);
+    //pwm_start();
+    gpio_set_level(GPIO_PWM_OUT, 1);
+    vTaskDelay(200 / portTICK_PERIOD_MS);
+    //pwm_stop(1);
+    gpio_set_level(GPIO_PWM_OUT, 0);
+
+    vTaskDelay(delay / portTICK_PERIOD_MS);
+  }
+}
+
 void app_main(void)
 {
   /* Initialize NVS */
@@ -207,6 +267,8 @@ void app_main(void)
   wifi_init_sta();
   #endif /*EXAMPLE_ESP_WIFI_MODE_AP*/
 
+  //pwm_gpio_initialize();
+
 	i2c_example_master_init();
   ssd1306_clearDisplay_buffer();
 
@@ -214,8 +276,9 @@ void app_main(void)
   ssd1306_init();
   ssd1306_display_clear();
 
-  ssd306_write_string(9, 4, "Wifi Analyzer");
+  ssd306_write_string(9, 4, "Radiacaoo:");
   ssd1306_display_data();
 
   xTaskCreate(&task_ssd1306_display, "task_ssd1306_display", 2048, NULL, 5, NULL);
+  xTaskCreate(&task_buzzer, "task_buzzer", 2048, NULL, 5, NULL);
 }
